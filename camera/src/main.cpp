@@ -1,12 +1,12 @@
 #include <Arduino.h>
-// #include <U8G2lib.h>
-#include <HardwareSerial.h>
 #include <Wire.h>
-#include <queue>
+#include <HardwareSerial.h>
 
 #include <SPI.h>
 #include <SD.h>
 #include "FS.h"
+
+#include <U8x8lib.h>
 
 #include "reader.h"
 #include "settings.h"
@@ -14,18 +14,17 @@
 const int buttonPin = D1;
 int buttonState = 0;
 
-// u8g2_SSD1306_128X64_NONAME_F_HW_I2C //u8g2(//u8g2_R0, U8X8_PIN_NONE, SCL, SDA);
-
-int frameDataLength;
 uint16_t imageCount = 0;
 char filename[32];
 char logString[100];
 char dumpster[10000];
 bool isPressed = false;
 
+
+U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);   // OLEDs without Reset of the Display
+
 void refreshIndex(void)
 {
-
   while (true)
   {
     sprintf(filename, "/IMG_%04d.bin", imageCount);
@@ -42,9 +41,11 @@ void refreshIndex(void)
 
 void freshPrint(const char *s)
 {
-  // u8g2.setCursor(0, 0);
-  // u8g2.println(s);
+  u8x8.clear();
+  u8x8.setCursor(0, 0);
+  u8x8.println(s);
 }
+
 
 void log(char *string)
 {
@@ -79,20 +80,16 @@ void writeFile(fs::FS &fs, const char *path, uint8_t *data, size_t len)
 void setup()
 {
 
-  // //u8g2.begin();
-  // u8x8.setFlipMode(1);
-  // u8x8.setFont(u8x8_font_chroma48medium8_r); // choose a suitable font
+  u8x8.begin();
+  u8x8.setFlipMode(1);
+  u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
   Wire.begin();
 
-  // initialize the LED pin as an output:
-  // pinMode(LED_BUILTIN, OUTPUT);
-  // initialize the pushbutton pin as an input:
   pinMode(buttonPin, INPUT_PULLUP);
 
   Serial.begin(9600);
 
   // Begin serial with A010's default baudrate.
-
   CameraSerial.begin(115200, SERIAL_8N1, RX, TX);
   while (!CameraSerial)
   {
@@ -106,6 +103,8 @@ void setup()
   CameraSerial.updateBaudRate(230400);
   delay(1000);
 
+  log("Setting up \n camera...");
+
   CameraSerial.print(ATC_UNIT);
   delay(1000);
   CameraSerial.print(ATC_FPS);
@@ -114,14 +113,14 @@ void setup()
   delay(1000);
   CameraSerial.print(ATC_DISP);
 
-  Serial.print("Initializing SD card...");
+  log("Initializing \n SD card...");
   pinMode(D2, OUTPUT);
   if (!SD.begin(D2))
   {
-    Serial.println("initialization failed!");
+    log("initialization \n failed!");
     return;
   }
-  Serial.println("initialization done.");
+  log("initialization \n done.");
   refreshIndex();
 }
 
@@ -133,12 +132,16 @@ void loop()
   {
     if (!isPressed)
     {
+      
       isPressed = true;
       writeFile(SD, filename, dataBuffer, fileSize);
-      freshPrint("File written");
-      // u8g2.printf("File size: %8d", fileSize);
 
-      Serial.printf("File written. File size: %8d\n", fileSize);
+      u8x8.clear();
+      u8x8.printf("%s \nwritten.\n", filename);
+      u8x8.printf("File size:\n %6d\n", fileSize);
+      
+
+      Serial.printf("File written. \n File size: \n %8d\n", fileSize);
     }
   }
   else
