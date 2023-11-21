@@ -1,3 +1,4 @@
+import os
 import sys
 from struct import unpack
 import png
@@ -5,10 +6,8 @@ import png
 def check_integrity():
     pass
 
-if __name__ == "__main__":
-    filename = sys.argv[1]
-
-    with open(filename, "rb") as f:
+def convert_image(path: str):
+    with open(path, "rb") as f:
         image_file_bytes = f.read()
 
 
@@ -17,8 +16,18 @@ if __name__ == "__main__":
 
     frame_width = int(image_file_bytes[14])
     frame_height = int(image_file_bytes[15])
+    with open(path + '.png', 'wb') as f: 
+        f = open(path + '.png', 'wb')      # binary mode is important
+        w = png.Writer(frame_width, frame_height, greyscale=True)
+        w.write(f, [ payload[i*frame_width : (i+1)*frame_width]  for i in range(frame_height)])
+        f.close()
 
-    f = open(filename + '.png', 'wb')      # binary mode is important
-    w = png.Writer(frame_width, frame_height, greyscale=True)
-    w.write(f, [ payload[i*frame_width : (i+1)*frame_width]  for i in range(frame_height)])
-    f.close()
+if __name__ == "__main__":
+    path = sys.argv[1]
+
+    if os.path.isdir(path):
+        for fn in os.listdir(path):
+            if os.path.isfile(fn):
+                convert_image(fn)
+    elif os.path.isfile(path):
+        convert_image(path)
