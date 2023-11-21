@@ -10,3 +10,4 @@ extern void parseFrame();
 extern uint8_t blockingRead(void);
 extern uint8_t dataBuffer[11111];
 extern uint16_t fileSize;
+extern bool isNewFrameReady;

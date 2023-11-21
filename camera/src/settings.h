@@ -13,7 +13,7 @@
 
 */
 
-#define ATC_BAUDRATE "AT+BAUD=3\r"
+#define ATC_BAUDRATE "AT+BAUD=4\r"
 
 
 /*
@@ -34,7 +34,7 @@
 
 // FPS
 
-#define ATC_FPS "AT+FPS=3\r"
+#define ATC_FPS "AT+FPS=5\r"
 
 
 /*
@@ -48,6 +48,6 @@
 #define ATC_BINNMODE "AT+BINN=1\r"
 
 
-#define ATC_UNIT "AT+UNIT=7\r"
+#define ATC_UNIT "AT+UNIT=0\r"
 
 #define FIFO_FULL 120

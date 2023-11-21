@@ -11,6 +11,11 @@
 #include "reader.h"
 #include "settings.h"
 
+#include <depth-mobilenet_inferencing.h>
+#include "edge-impulse-sdk/dsp/image/image.hpp"
+
+
+static int ei_camera_get_data(size_t offset, size_t length, float *out_ptr);
 const int buttonPin = D1;
 int buttonState = 0;
 
@@ -20,8 +25,9 @@ char logString[100];
 char dumpster[10000];
 bool isPressed = false;
 
+static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
 
-U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);   // OLEDs without Reset of the Display
+U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE); // OLEDs without Reset of the Display
 
 void refreshIndex(void)
 {
@@ -45,7 +51,6 @@ void freshPrint(const char *s)
   u8x8.setCursor(0, 0);
   u8x8.println(s);
 }
-
 
 void log(char *string)
 {
@@ -100,7 +105,7 @@ void setup()
   // Then set to a higher baudrate. Otherwise the A010 module will became sluggish.
   CameraSerial.print(ATC_BAUDRATE);
   delay(1000);
-  CameraSerial.updateBaudRate(230400);
+  CameraSerial.updateBaudRate(460800);
   delay(1000);
 
   log("Setting up \n camera...");
@@ -132,16 +137,16 @@ void loop()
   {
     if (!isPressed)
     {
-      
+
       isPressed = true;
       writeFile(SD, filename, dataBuffer, fileSize);
 
       u8x8.clear();
       u8x8.printf("%s \nwritten.\n", filename);
       u8x8.printf("File size:\n %6d\n", fileSize);
-      
 
       Serial.printf("File written. \n File size: \n %8d\n", fileSize);
+      delay(100);
     }
   }
   else
@@ -155,4 +160,60 @@ void loop()
   }
 
   parseFrame();
+
+  if (isNewFrameReady)
+  {
+    ei::signal_t signal;
+    signal.total_length = EI_CLASSIFIER_INPUT_WIDTH * EI_CLASSIFIER_INPUT_HEIGHT;
+    signal.get_data = &ei_camera_get_data;
+
+    // Run the classifier
+    ei_impulse_result_t result = {0};
+
+    EI_IMPULSE_ERROR err = run_classifier(&signal, &result, debug_nn);
+    if (err != EI_IMPULSE_OK)
+    {
+      ei_printf("ERR: Failed to run classifier (%d)\n", err);
+      return;
+    }
+
+    // print the predictions
+    ei_printf("Predictions (DSP: %d ms., Classification: %d ms., Anomaly: %d ms.): \n",
+              result.timing.dsp, result.timing.classification, result.timing.anomaly);
+
+    float highest = 0;
+    const char *highestLabel;
+
+    for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++)
+    {
+      ei_printf("    %s: %.5f\n", result.classification[ix].label,
+                result.classification[ix].value);
+      if (result.classification[ix].value > highest) {
+        highest = result.classification[ix].value;
+        highestLabel = result.classification[ix].label;
+      }
+    }
+
+    u8x8.clear();
+    u8x8.println(highestLabel);
+    isNewFrameReady = false;
+  }
+}
+
+static int ei_camera_get_data(size_t offset, size_t length, float *out_ptr)
+{
+  size_t pixel_ix = offset;
+  size_t pixels_left = length;
+  size_t out_ptr_ix = 0;
+
+  while (pixels_left != 0)
+  {
+    out_ptr[out_ptr_ix] = dataBuffer[pixel_ix];
+    // go to the next pixel
+    out_ptr_ix++;
+    pixel_ix++;
+    pixels_left--;
+  }
+  // and done!
+  return 0;
 }

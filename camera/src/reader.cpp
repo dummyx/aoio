@@ -7,6 +7,7 @@ std::deque<byte> rawData;
 std::queue<byte> extractedFrame;
 
 bool frameStarted;
+bool isNewFrameReady = false;
 uint16_t packetSize = 0;
 byte checksum;
 
@@ -133,6 +134,7 @@ void parseFrame()
         check();
 
         packetSize = 0;
+        isNewFrameReady = true;
         frameStarted = false;
     }
 }
