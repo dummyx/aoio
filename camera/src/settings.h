@@ -48,6 +48,6 @@
 #define ATC_BINNMODE "AT+BINN=1\r"
 
 
-#define ATC_UNIT "AT+UNIT=0\r"
+#define ATC_UNIT "AT+UNIT=7\r"
 
 #define FIFO_FULL 120

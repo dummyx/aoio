@@ -196,6 +196,7 @@ void loop()
 
     u8x8.clear();
     u8x8.println(highestLabel);
+    u8x8.printf("\n%3.6f\n", highest);
     isNewFrameReady = false;
   }
 }
