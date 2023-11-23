@@ -14,7 +14,6 @@
 #include <depth-mobilenet_inferencing.h>
 #include "edge-impulse-sdk/dsp/image/image.hpp"
 
-
 static int ei_camera_get_data(size_t offset, size_t length, float *out_ptr);
 const int buttonPin = D1;
 int buttonState = 0;
@@ -22,7 +21,6 @@ int buttonState = 0;
 uint16_t imageCount = 0;
 char filename[32];
 char logString[100];
-char dumpster[10000];
 bool isPressed = false;
 
 static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
@@ -105,7 +103,7 @@ void setup()
   // Then set to a higher baudrate. Otherwise the A010 module will became sluggish.
   CameraSerial.print(ATC_BAUDRATE);
   delay(1000);
-  CameraSerial.updateBaudRate(460800);
+  CameraSerial.updateBaudRate(230400);
   delay(1000);
 
   log("Setting up \n camera...");
@@ -135,7 +133,7 @@ void loop()
 
   if (buttonState == LOW)
   {
-    if (!isPressed)
+    if (!isPressed && isNewFrameReady)
     {
 
       isPressed = true;
@@ -146,6 +144,7 @@ void loop()
       u8x8.printf("File size:\n %6d\n", fileSize);
 
       Serial.printf("File written. \n File size: \n %8d\n", fileSize);
+      isNewFrameReady = false;
       delay(100);
     }
   }
@@ -188,7 +187,8 @@ void loop()
     {
       ei_printf("    %s: %.5f\n", result.classification[ix].label,
                 result.classification[ix].value);
-      if (result.classification[ix].value > highest) {
+      if (result.classification[ix].value > highest)
+      {
         highest = result.classification[ix].value;
         highestLabel = result.classification[ix].label;
       }
@@ -203,7 +203,9 @@ void loop()
 
 static int ei_camera_get_data(size_t offset, size_t length, float *out_ptr)
 {
-  size_t pixel_ix = offset;
+  size_t counter = 0;
+
+  size_t pixel_ix = offset + 2;
   size_t pixels_left = length;
   size_t out_ptr_ix = 0;
 
@@ -214,6 +216,13 @@ static int ei_camera_get_data(size_t offset, size_t length, float *out_ptr)
     out_ptr_ix++;
     pixel_ix++;
     pixels_left--;
+    counter++;
+
+    if (counter >= 96)
+    {
+      pixel_ix += 4;
+      counter = 0;
+    }
   }
   // and done!
   return 0;

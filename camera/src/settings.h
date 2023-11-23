@@ -13,7 +13,7 @@
 
 */
 
-#define ATC_BAUDRATE "AT+BAUD=4\r"
+#define ATC_BAUDRATE "AT+BAUD=3\r"
 
 
 /*
@@ -34,7 +34,7 @@
 
 // FPS
 
-#define ATC_FPS "AT+FPS=5\r"
+#define ATC_FPS "AT+FPS=2\r"
 
 
 /*
