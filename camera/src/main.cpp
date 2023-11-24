@@ -211,7 +211,8 @@ static int ei_camera_get_data(size_t offset, size_t length, float *out_ptr)
 
   while (pixels_left != 0)
   {
-    out_ptr[out_ptr_ix] = dataBuffer[pixel_ix];
+    uint8_t pixel = dataBuffer[pixel_ix];
+    out_ptr[out_ptr_ix] = (pixel << 16) + (pixel << 8) + pixel;
     // go to the next pixel
     out_ptr_ix++;
     pixel_ix++;
