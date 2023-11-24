@@ -29,7 +29,7 @@
 #include "edge-impulse-sdk/classifier/ei_model_types.h"
 #include "edge-impulse-sdk/classifier/inferencing_engines/engines.h"
 
-const char* ei_classifier_inferencing_categories[] = { "chair", "horse_scaffold", "human", "human_in_chair", "stairs", "step_ladder", "stool" };
+const char* ei_classifier_inferencing_categories[] = { "chair", "horse_scaffold", "stairs", "step_ladder", "stool" };
 
 uint8_t ei_dsp_config_3_axes[] = { 0 };
 const uint32_t ei_dsp_config_3_axes_size = 1;
@@ -88,11 +88,11 @@ const ei_model_performance_calibration_t ei_calibration = {
     0   /* Don't use flags */
 };
 
-const ei_impulse_t impulse_303311_3 = {
+const ei_impulse_t impulse_303311_4 = {
     .project_id = 303311,
     .project_owner = "ZHIJIE XIE",
     .project_name = "depth-mobilenet",
-    .deploy_version = 3,
+    .deploy_version = 4,
 
     .nn_input_frame_size = 9216,
     .raw_sample_count = 9216,
@@ -112,7 +112,7 @@ const ei_impulse_t impulse_303311_3 = {
     .object_detection_last_layer = EI_CLASSIFIER_LAST_LAYER_UNKNOWN,
     .fomo_output_size = 0,
     
-    .tflite_output_features_count = 7,
+    .tflite_output_features_count = 5,
     .learning_blocks_size = ei_learning_blocks_size,
     .learning_blocks = ei_learning_blocks,
 
@@ -124,11 +124,11 @@ const ei_impulse_t impulse_303311_3 = {
     .slices_per_model_window = 4,
 
     .has_anomaly = 0,
-    .label_count = 7,
+    .label_count = 5,
     .calibration = ei_calibration,
     .categories = ei_classifier_inferencing_categories
 };
 
-const ei_impulse_t ei_default_impulse = impulse_303311_3;
+const ei_impulse_t ei_default_impulse = impulse_303311_4;
 
 #endif // _EI_CLASSIFIER_MODEL_METADATA_H_

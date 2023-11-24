@@ -55,7 +55,7 @@
 #define EI_CLASSIFIER_PROJECT_ID                 303311
 #define EI_CLASSIFIER_PROJECT_OWNER              "ZHIJIE XIE"
 #define EI_CLASSIFIER_PROJECT_NAME               "depth-mobilenet"
-#define EI_CLASSIFIER_PROJECT_DEPLOY_VERSION     3
+#define EI_CLASSIFIER_PROJECT_DEPLOY_VERSION     4
 #define EI_CLASSIFIER_NN_INPUT_FRAME_SIZE        9216
 #define EI_CLASSIFIER_RAW_SAMPLE_COUNT           9216
 #define EI_CLASSIFIER_RAW_SAMPLES_PER_FRAME      1
@@ -63,9 +63,9 @@
 #define EI_CLASSIFIER_INPUT_WIDTH                96
 #define EI_CLASSIFIER_INPUT_HEIGHT               96
 #define EI_CLASSIFIER_INPUT_FRAMES               1
-#define EI_CLASSIFIER_NN_OUTPUT_COUNT            7
+#define EI_CLASSIFIER_NN_OUTPUT_COUNT            5
 #define EI_CLASSIFIER_INTERVAL_MS                1
-#define EI_CLASSIFIER_LABEL_COUNT                7
+#define EI_CLASSIFIER_LABEL_COUNT                5
 #define EI_CLASSIFIER_HAS_ANOMALY                0
 #define EI_CLASSIFIER_FREQUENCY                  0
 #define EI_CLASSIFIER_HAS_MODEL_VARIABLES        1
