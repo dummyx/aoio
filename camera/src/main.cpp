@@ -15,6 +15,7 @@
 #include "edge-impulse-sdk/dsp/image/image.hpp"
 
 static int ei_camera_get_data(size_t offset, size_t length, float *out_ptr);
+void run_ei(void);
 const int buttonPin = D1;
 int buttonState = 0;
 
@@ -145,7 +146,7 @@ void loop()
 
       Serial.printf("File written. \n File size: \n %8d\n", fileSize);
       isNewFrameReady = false;
-      delay(100);
+      delay(200);
     }
   }
   else
@@ -159,6 +160,13 @@ void loop()
   }
 
   parseFrame();
+#ifdef ENABLE_INFERENCING
+  run_ei();
+#endif
+}
+
+void run_ei()
+{
 
   if (isNewFrameReady)
   {
