@@ -11,11 +11,14 @@
 #include "reader.h"
 #include "settings.h"
 
-#include <depth-mobilenet_inferencing.h>
+#include <mixed-mobilenet_inferencing.h>
+#include "grayscale_camera.h"
+
 #include "edge-impulse-sdk/dsp/image/image.hpp"
 
-static int ei_camera_get_data(size_t offset, size_t length, float *out_ptr);
+static int ei_depth_get_data(size_t offset, size_t length, float *out_ptr);
 void run_ei(void);
+
 const int buttonPin = D1;
 int buttonState = 0;
 
@@ -83,6 +86,8 @@ void writeFile(fs::FS &fs, const char *path, uint8_t *data, size_t len)
 
 void setup()
 {
+
+  grayscale_setup();
 
   u8x8.begin();
   u8x8.setFlipMode(1);
@@ -172,7 +177,7 @@ void run_ei()
   {
     ei::signal_t signal;
     signal.total_length = EI_CLASSIFIER_INPUT_WIDTH * EI_CLASSIFIER_INPUT_HEIGHT;
-    signal.get_data = &ei_camera_get_data;
+    signal.get_data = &ei_depth_get_data;
 
     // Run the classifier
     ei_impulse_result_t result = {0};
@@ -209,7 +214,7 @@ void run_ei()
   }
 }
 
-static int ei_camera_get_data(size_t offset, size_t length, float *out_ptr)
+static int ei_depth_get_data(size_t offset, size_t length, float *out_ptr)
 {
   size_t counter = 0;
 
