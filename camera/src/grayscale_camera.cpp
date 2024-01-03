@@ -1,3 +1,5 @@
+/*
+
 #include <mixed-mobilenet_inferencing.h>
 
 #include "grayscale_camera.h"
@@ -10,7 +12,6 @@
 #define EI_CAMERA_RAW_FRAME_BUFFER_ROWS 96
 #define EI_CAMERA_FRAME_BYTE_SIZE 1
 
-/* Private variables ------------------------------------------------------- */
 static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
 static bool is_initialised = false;
 uint8_t *snapshot_buf; // points to the output of the capture
@@ -48,7 +49,6 @@ static camera_config_t camera_config = {
     .grab_mode = CAMERA_GRAB_WHEN_EMPTY,
 };
 
-/* Function definitions ------------------------------------------------------- */
 bool ei_grayscale_init(void);
 void ei_grayscale_deinit(void);
 bool ei_grayscale_capture(uint32_t img_width, uint32_t img_height, uint8_t *out_buf);
@@ -213,3 +213,6 @@ static int ei_grayscale_get_data(size_t offset, size_t length, float *out_ptr)
     // and done!
     return 0;
 }
+
+
+*/
