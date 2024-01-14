@@ -290,8 +290,8 @@ void loop()
     run_grayscale_ei();
 
     u8x8.clear();
-    u8x8.printf("%1.3f : %.7s\n", depth_max, depth_label);
-    u8x8.printf("%1.3f : %.7s\n", grayscale_max, grayscale_label);
+    u8x8.printf("%1.3f:%.9s\n", depth_max, depth_label);
+    u8x8.printf("%1.3f:%.9s\n", grayscale_max, grayscale_label);
   }
 }
 
