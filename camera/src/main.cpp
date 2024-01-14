@@ -194,6 +194,19 @@ void freshPrint(const char *s)
   u8x8.println(s);
 }
 
+char get_last_char(const char *s)
+{
+  int length = strlen(s); // Get the length of the string
+  if (length > 0)
+  {
+    return s[length - 1];
+  }
+  else
+  {
+    return ' ';
+  }
+}
+
 void log(char *string)
 {
   Serial.println(string);
@@ -290,7 +303,9 @@ void loop()
     run_grayscale_ei();
 
     u8x8.clear();
+    u8x8.println("DEPTH:");
     u8x8.printf("%1.3f:%.9s\n", depth_max, depth_label);
+    u8x8.println("IMAGE:");
     u8x8.printf("%1.3f:%.9s\n", grayscale_max, grayscale_label);
   }
 }
@@ -340,7 +355,7 @@ void run_grayscale_ei()
   grayscale_max = 0;
   for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++)
   {
-    if (result.classification[ix].value > grayscale_max)
+    if (result.classification[ix].value > grayscale_max && get_last_char(result.classification[ix].label) == 'e')
     {
       grayscale_max = result.classification[ix].value;
       grayscale_label = (char *)result.classification[ix].label;
@@ -379,7 +394,7 @@ void run_depth_ei()
     {
       // ei_printf("D    %s: %.5f\n", result.classification[ix].label,
       //          result.classification[ix].value);
-      if (result.classification[ix].value > depth_max)
+      if (result.classification[ix].value > depth_max && get_last_char(result.classification[ix].label) == 'h')
       {
         depth_max = result.classification[ix].value;
         depth_label = (char *)result.classification[ix].label;
