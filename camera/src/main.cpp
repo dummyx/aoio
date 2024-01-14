@@ -11,7 +11,7 @@
 #include "reader.h"
 #include "settings.h"
 
-#include <mixed-mobilenet_inferencing.h>
+#include <hybrid_mobilenet_inferencing.h>
 // #include "grayscale_camera.h"
 
 #include <esp_camera.h>
@@ -33,6 +33,9 @@ void run_grayscale_ei(void);
 static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
 static bool is_initialised = false;
 uint8_t *snapshot_buf; // points to the output of the capture
+
+float grayscale_max = 0;
+float depth_max = 0;
 
 const int buttonPin = D1;
 int buttonState = 0;
@@ -143,13 +146,6 @@ bool ei_grayscale_init(void)
 
   sensor_t *s = esp_camera_sensor_get();
   // initial sensors are flipped vertically and colors are a bit saturated
-  if (s->id.PID == OV3660_PID)
-  {
-    s->set_vflip(s, 1);      // flip it back
-    s->set_brightness(s, 1); // up the brightness just a bit
-    s->set_saturation(s, 0); // lower the saturation
-  }
-
   is_initialised = true;
   return true;
 }
@@ -331,6 +327,9 @@ void loop()
 #ifdef ENABLE_INFERENCING
   run_depth_ei();
   run_grayscale_ei();
+  u8x8.clear();
+  u8x8.printf("%3.3f : %s\n", depth_max, depth_label);
+  u8x8.printf("%3.3f : %s\n", grayscale_max, grayscale_label);
 #endif
 }
 
@@ -378,12 +377,12 @@ void run_grayscale_ei()
   ei_printf("Predictions (DSP: %d ms., Classification: %d ms., Anomaly: %d ms.): \n",
             result.timing.dsp, result.timing.classification, result.timing.anomaly);
 
-  int _max = 0;
+  int grayscale_max = 0;
   for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++)
   {
-    if (result.classification[ix].value > _max)
+    if (result.classification[ix].value > grayscale_max)
     {
-      _max = result.classification[ix].value;
+      grayscale_max = result.classification[ix].value;
       grayscale_label = (char *)result.classification[ix].label;
     }
     ei_printf("    %s: %.5f\n", result.classification[ix].label,
@@ -415,23 +414,18 @@ void run_depth_ei()
     ei_printf("Predictions (DSP: %d ms., Classification: %d ms., Anomaly: %d ms.): \n",
               result.timing.dsp, result.timing.classification, result.timing.anomaly);
 
-    float highest = 0;
-    const char *highestLabel;
-
+    depth_max = 0;
     for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++)
     {
       ei_printf("    %s: %.5f\n", result.classification[ix].label,
                 result.classification[ix].value);
-      if (result.classification[ix].value > highest)
+      if (result.classification[ix].value > depth_max)
       {
-        highest = result.classification[ix].value;
-        highestLabel = result.classification[ix].label;
+        depth_max = result.classification[ix].value;
+        depth_label = (char *)result.classification[ix].label;
       }
     }
 
-    u8x8.clear();
-    u8x8.println(highestLabel);
-    u8x8.printf("\n%3.6f\n", highest);
     isNewFrameReady = false;
   }
 }
