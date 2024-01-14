@@ -12,7 +12,6 @@
 #include "settings.h"
 
 #include <hybrid_mobilenet_inferencing.h>
-// #include "grayscale_camera.h"
 
 #include <esp_camera.h>
 
@@ -23,7 +22,6 @@
 #define EI_CAMERA_FRAME_BYTE_SIZE 1
 
 bool ei_grayscale_init(void);
-void ei_grayscale_deinit(void);
 bool ei_grayscale_capture(uint32_t img_width, uint32_t img_height, uint8_t *out_buf);
 static int ei_grayscale_get_data(size_t offset, size_t length, float *out_ptr);
 static int ei_depth_get_data(size_t offset, size_t length, float *out_ptr);
@@ -45,12 +43,10 @@ char filename[32];
 char logString[100];
 bool isPressed = false;
 
-// static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
-
-U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE); // OLEDs without Reset of the Display
-
 char *grayscale_label = "";
 char *depth_label = "";
+
+U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE); // OLEDs without Reset of the Display
 
 static camera_config_t camera_config = {
     .pin_pwdn = PWDN_GPIO_NUM,
@@ -79,8 +75,8 @@ static camera_config_t camera_config = {
     .pixel_format = PIXFORMAT_GRAYSCALE, // YUV422,GRAYSCALE,RGB565,JPEG
     .frame_size = FRAMESIZE_96X96,       // QQVGA-UXGA Do not use sizes above QVGA when not JPEG
 
-     // 0-63 lower number means higher quality
-    .fb_count = 1,      // if more than one, i2s runs in continuous mode. Use only with JPEG
+    // 0-63 lower number means higher quality
+    .fb_count = 1, // if more than one, i2s runs in continuous mode. Use only with JPEG
     .fb_location = CAMERA_FB_IN_PSRAM,
     .grab_mode = CAMERA_GRAB_WHEN_EMPTY,
 };
@@ -109,7 +105,6 @@ void writeFile(fs::FS &fs, const char *path, uint8_t *data, size_t len)
   sprintf(filename, "/IMG_%04d.bin", imageCount);
 }
 
-
 bool ei_grayscale_init(void)
 {
 
@@ -127,22 +122,6 @@ bool ei_grayscale_init(void)
   // initial sensors are flipped vertically and colors are a bit saturated
   is_initialised = true;
   return true;
-}
-
-void ei_grayscale_deinit(void)
-{
-
-  // deinitialize the camera
-  esp_err_t err = esp_camera_deinit();
-
-  if (err != ESP_OK)
-  {
-    ei_printf("Camera deinit failed\n");
-    return;
-  }
-
-  is_initialised = false;
-  return;
 }
 
 bool ei_grayscale_capture(uint32_t img_width, uint32_t img_height, uint8_t *out_buf)
@@ -192,7 +171,6 @@ static int ei_grayscale_get_data(size_t offset, size_t length, float *out_ptr)
   return 0;
 }
 
-
 void refreshIndex(void)
 {
   while (true)
@@ -225,7 +203,6 @@ void log(char *string)
 void setup()
 {
 
-  // grayscale_setup();
   u8x8.setI2CAddress(0x78);
   u8x8.begin();
   u8x8.setFlipMode(1);
@@ -261,6 +238,7 @@ void setup()
   CameraSerial.print(ATC_BINNMODE);
   delay(1000);
   CameraSerial.print(ATC_DISP);
+  delay(1000);
 
   log("Initializing \n SD card...");
   pinMode(D2, OUTPUT);
@@ -279,6 +257,7 @@ void loop()
 
   if (buttonState == LOW)
   {
+    Serial.println("Button Pressed");
     if (!isPressed && isNewFrameReady)
     {
 
@@ -305,15 +284,16 @@ void loop()
   }
 
   parseFrame();
-#ifdef ENABLE_INFERENCING
-  run_depth_ei();
-  // run_grayscale_ei();
-  u8x8.clear();
-  u8x8.printf("%3.3f : %s\n", depth_max, depth_label);
-  u8x8.printf("%3.3f : %s\n", grayscale_max, grayscale_label);
-#endif
-}
+  if (isNewFrameReady)
+  {
+    run_depth_ei();
+    run_grayscale_ei();
 
+    u8x8.clear();
+    u8x8.printf("%1.3f : %.7s\n", depth_max, depth_label);
+    u8x8.printf("%1.3f : %.7s\n", grayscale_max, grayscale_label);
+  }
+}
 
 void run_grayscale_ei()
 {
@@ -354,7 +334,7 @@ void run_grayscale_ei()
   }
 
   // print the predictions
-  //ei_printf("Predictions (DSP: %d ms., Classification: %d ms., Anomaly: %d ms.): \n",
+  // ei_printf("Predictions (DSP: %d ms., Classification: %d ms., Anomaly: %d ms.): \n",
   //          result.timing.dsp, result.timing.classification, result.timing.anomaly);
 
   grayscale_max = 0;
@@ -365,8 +345,8 @@ void run_grayscale_ei()
       grayscale_max = result.classification[ix].value;
       grayscale_label = (char *)result.classification[ix].label;
     }
-    //ei_printf("I:    %s: %.5f\n", result.classification[ix].label,
-    //          result.classification[ix].value);
+    // ei_printf("I:    %s: %.5f\n", result.classification[ix].label,
+    //           result.classification[ix].value);
   }
   Serial.printf("IMAGE: %03.3f, %s\n", grayscale_max, grayscale_label);
   free(snapshot_buf);
@@ -439,5 +419,3 @@ static int ei_depth_get_data(size_t offset, size_t length, float *out_ptr)
   // and done!
   return 0;
 }
-
-

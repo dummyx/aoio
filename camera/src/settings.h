@@ -34,7 +34,7 @@
 
 // FPS
 
-#define ATC_FPS "AT+FPS=2\r"
+#define ATC_FPS "AT+FPS=1\r"
 
 
 /*
@@ -49,5 +49,3 @@
 
 
 #define ATC_UNIT "AT+UNIT=7\r"
-
-#define FIFO_FULL 120
