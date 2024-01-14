@@ -49,9 +49,8 @@ bool isPressed = false;
 
 U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE); // OLEDs without Reset of the Display
 
-
-char *grayscale_label;
-char *depth_label;
+char *grayscale_label = "";
+char *depth_label = "";
 
 static camera_config_t camera_config = {
     .pin_pwdn = PWDN_GPIO_NUM,
@@ -80,7 +79,7 @@ static camera_config_t camera_config = {
     .pixel_format = PIXFORMAT_GRAYSCALE, // YUV422,GRAYSCALE,RGB565,JPEG
     .frame_size = FRAMESIZE_96X96,       // QQVGA-UXGA Do not use sizes above QVGA when not JPEG
 
-    .jpeg_quality = 12, // 0-63 lower number means higher quality
+     // 0-63 lower number means higher quality
     .fb_count = 1,      // if more than one, i2s runs in continuous mode. Use only with JPEG
     .fb_location = CAMERA_FB_IN_PSRAM,
     .grab_mode = CAMERA_GRAB_WHEN_EMPTY,
@@ -110,26 +109,6 @@ void writeFile(fs::FS &fs, const char *path, uint8_t *data, size_t len)
   sprintf(filename, "/IMG_%04d.bin", imageCount);
 }
 
-void grayscale_setup()
-{
-  // put your setup code here, to run once:
-  Serial.begin(115200);
-  // comment out the below line to start inference immediately after upload
-  while (!Serial)
-    ;
-  Serial.println("Edge Impulse Inferencing Demo");
-  if (ei_grayscale_init() == false)
-  {
-    ei_printf("Failed to initialize Camera!\r\n");
-  }
-  else
-  {
-    ei_printf("Camera initialized\r\n");
-  }
-
-  ei_printf("\nStarting continious inference in 2 seconds...\n");
-  ei_sleep(2000);
-}
 
 bool ei_grayscale_init(void)
 {
@@ -247,11 +226,13 @@ void setup()
 {
 
   // grayscale_setup();
-
+  u8x8.setI2CAddress(0x78);
   u8x8.begin();
   u8x8.setFlipMode(1);
   u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
   Wire.begin();
+
+  ei_grayscale_init();
 
   pinMode(buttonPin, INPUT_PULLUP);
 
@@ -326,7 +307,7 @@ void loop()
   parseFrame();
 #ifdef ENABLE_INFERENCING
   run_depth_ei();
-  run_grayscale_ei();
+  // run_grayscale_ei();
   u8x8.clear();
   u8x8.printf("%3.3f : %s\n", depth_max, depth_label);
   u8x8.printf("%3.3f : %s\n", grayscale_max, grayscale_label);
@@ -336,12 +317,11 @@ void loop()
 
 void run_grayscale_ei()
 {
-
   // instead of wait_ms, we'll wait on the signal, this allows threads to cancel us...
-  if (ei_sleep(5) != EI_IMPULSE_OK)
-  {
-    return;
-  }
+  // jif (ei_sleep(5) != EI_IMPULSE_OK)
+  // {
+  //  return;
+  // }
 
   snapshot_buf = (uint8_t *)malloc(EI_CAMERA_RAW_FRAME_BUFFER_COLS * EI_CAMERA_RAW_FRAME_BUFFER_ROWS * EI_CAMERA_FRAME_BYTE_SIZE);
 
@@ -374,10 +354,10 @@ void run_grayscale_ei()
   }
 
   // print the predictions
-  ei_printf("Predictions (DSP: %d ms., Classification: %d ms., Anomaly: %d ms.): \n",
-            result.timing.dsp, result.timing.classification, result.timing.anomaly);
+  //ei_printf("Predictions (DSP: %d ms., Classification: %d ms., Anomaly: %d ms.): \n",
+  //          result.timing.dsp, result.timing.classification, result.timing.anomaly);
 
-  int grayscale_max = 0;
+  grayscale_max = 0;
   for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++)
   {
     if (result.classification[ix].value > grayscale_max)
@@ -385,15 +365,15 @@ void run_grayscale_ei()
       grayscale_max = result.classification[ix].value;
       grayscale_label = (char *)result.classification[ix].label;
     }
-    ei_printf("    %s: %.5f\n", result.classification[ix].label,
-              result.classification[ix].value);
+    //ei_printf("I:    %s: %.5f\n", result.classification[ix].label,
+    //          result.classification[ix].value);
   }
+  Serial.printf("IMAGE: %03.3f, %s\n", grayscale_max, grayscale_label);
   free(snapshot_buf);
 }
 
 void run_depth_ei()
 {
-
   if (isNewFrameReady)
   {
     ei::signal_t signal;
@@ -411,20 +391,22 @@ void run_depth_ei()
     }
 
     // print the predictions
-    ei_printf("Predictions (DSP: %d ms., Classification: %d ms., Anomaly: %d ms.): \n",
-              result.timing.dsp, result.timing.classification, result.timing.anomaly);
+    // ei_printf("Predictions (DSP: %d ms., Classification: %d ms., Anomaly: %d ms.): \n",
+    //          result.timing.dsp, result.timing.classification, result.timing.anomaly);
 
     depth_max = 0;
     for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++)
     {
-      ei_printf("    %s: %.5f\n", result.classification[ix].label,
-                result.classification[ix].value);
+      // ei_printf("D    %s: %.5f\n", result.classification[ix].label,
+      //          result.classification[ix].value);
       if (result.classification[ix].value > depth_max)
       {
         depth_max = result.classification[ix].value;
         depth_label = (char *)result.classification[ix].label;
       }
     }
+
+    Serial.printf("DEPTH: %03.3f, %s\n", grayscale_max, grayscale_label);
 
     isNewFrameReady = false;
   }
