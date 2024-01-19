@@ -6,7 +6,9 @@
 #include <SD.h>
 #include "FS.h"
 
+#include <Dps3xx.h>
 #include <U8x8lib.h>
+#include "MPU9250.h"
 
 #include "reader.h"
 #include "settings.h"
@@ -20,6 +22,7 @@
 #define EI_CAMERA_RAW_FRAME_BUFFER_COLS 96
 #define EI_CAMERA_RAW_FRAME_BUFFER_ROWS 96
 #define EI_CAMERA_FRAME_BYTE_SIZE 1
+#define OVERSAMPLING 1
 
 bool ei_grayscale_init(void);
 bool ei_grayscale_capture(uint32_t img_width, uint32_t img_height, uint8_t *out_buf);
@@ -27,6 +30,9 @@ static int ei_grayscale_get_data(size_t offset, size_t length, float *out_ptr);
 static int ei_depth_get_data(size_t offset, size_t length, float *out_ptr);
 void run_depth_ei(void);
 void run_grayscale_ei(void);
+
+Dps3xx Dps3xxPressureSensor = Dps3xx();
+MPU9250 mpu;
 
 static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
 static bool is_initialised = false;
@@ -262,6 +268,18 @@ void setup()
   }
   log("initialization \n done.");
   refreshIndex();
+
+  Dps3xxPressureSensor.begin(Wire);
+  mpu.setup(0x68);
+
+  if (!mpu.setup(0x68))
+  { // change to your own address
+    while (1)
+    {
+      Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
+      delay(5000);
+    }
+  }
 }
 
 void loop()
@@ -299,14 +317,26 @@ void loop()
   parseFrame();
   if (isNewFrameReady)
   {
+    mpu.update();
+
     run_depth_ei();
     run_grayscale_ei();
+
+    // float yaw = mpu.getYaw();
+    // float pitch = mpu.getPitch();
+    // float roll = mpu.getRoll();
+
+    // float pressure;
+    // int16_t ret = Dps3xxPressureSensor.measurePressureOnce(pressure, OVERSAMPLING);
 
     u8x8.clear();
     u8x8.println("DEPTH:");
     u8x8.printf("%1.3f:%.9s\n", depth_max, depth_label);
     u8x8.println("IMAGE:");
     u8x8.printf("%1.3f:%.9s\n", grayscale_max, grayscale_label);
+    
+    char* fianl_answer = depth_max > grayscale_max ? depth_label : grayscale_label;
+    u8x8.printf("FINAL: %10s", fianl_answer);
   }
 }
 
