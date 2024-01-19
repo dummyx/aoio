@@ -336,7 +336,7 @@ void loop()
     u8x8.printf("%1.3f:%.9s\n", grayscale_max, grayscale_label);
     
     char* fianl_answer = depth_max > grayscale_max ? depth_label : grayscale_label;
-    u8x8.printf("FINAL: %10s", fianl_answer);
+    u8x8.printf("FINAL: \n%.14s", fianl_answer);
   }
 }
 
