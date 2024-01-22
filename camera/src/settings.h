@@ -34,7 +34,7 @@
 
 // FPS
 
-#define ATC_FPS "AT+FPS=1\r"
+#define ATC_FPS "AT+FPS=2\r"
 
 
 /*

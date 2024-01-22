@@ -24,12 +24,12 @@
 #define EI_CAMERA_FRAME_BYTE_SIZE 1
 #define OVERSAMPLING 1
 
-bool ei_grayscale_init(void);
-bool ei_grayscale_capture(uint32_t img_width, uint32_t img_height, uint8_t *out_buf);
-static int ei_grayscale_get_data(size_t offset, size_t length, float *out_ptr);
+bool ei_image_init(void);
+bool ei_image_capture(uint32_t img_width, uint32_t img_height, uint8_t *out_buf);
+static int ei_image_get_data(size_t offset, size_t length, float *out_ptr);
 static int ei_depth_get_data(size_t offset, size_t length, float *out_ptr);
 void run_depth_ei(void);
-void run_grayscale_ei(void);
+void run_image_ei(void);
 
 Dps3xx Dps3xxPressureSensor = Dps3xx();
 MPU9250 mpu;
@@ -37,8 +37,9 @@ MPU9250 mpu;
 static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
 static bool is_initialised = false;
 uint8_t *snapshot_buf; // points to the output of the capture
-
-float grayscale_max = 0;
+uint32_t pixel_sum;
+uint32_t MAX_SUM = EI_CAMERA_RAW_FRAME_BUFFER_COLS * EI_CAMERA_RAW_FRAME_BUFFER_ROWS * 255;
+float image_max = 0;
 float depth_max = 0;
 
 const int buttonPin = D1;
@@ -49,7 +50,7 @@ char filename[32];
 char logString[100];
 bool isPressed = false;
 
-char *grayscale_label = "";
+char *image_label = "";
 char *depth_label = "";
 
 U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE); // OLEDs without Reset of the Display
@@ -111,7 +112,7 @@ void writeFile(fs::FS &fs, const char *path, uint8_t *data, size_t len)
   sprintf(filename, "/IMG_%04d.bin", imageCount);
 }
 
-bool ei_grayscale_init(void)
+bool ei_image_init(void)
 {
 
   if (is_initialised)
@@ -130,7 +131,7 @@ bool ei_grayscale_init(void)
   return true;
 }
 
-bool ei_grayscale_capture(uint32_t img_width, uint32_t img_height, uint8_t *out_buf)
+bool ei_image_capture(uint32_t img_width, uint32_t img_height, uint8_t *out_buf)
 {
   bool do_resize = false;
 
@@ -158,7 +159,7 @@ bool ei_grayscale_capture(uint32_t img_width, uint32_t img_height, uint8_t *out_
   return true;
 }
 
-static int ei_grayscale_get_data(size_t offset, size_t length, float *out_ptr)
+static int ei_image_get_data(size_t offset, size_t length, float *out_ptr)
 {
   size_t pixel_ix = offset;
   size_t pixels_left = length;
@@ -167,7 +168,7 @@ static int ei_grayscale_get_data(size_t offset, size_t length, float *out_ptr)
   while (pixels_left != 0)
   {
     out_ptr[out_ptr_ix] = (snapshot_buf[pixel_ix] << 16) + (snapshot_buf[pixel_ix] << 8) + snapshot_buf[pixel_ix];
-
+    pixel_sum += snapshot_buf[pixel_ix];
     // go to the next pixel
     out_ptr_ix++;
     pixel_ix += 1;
@@ -228,12 +229,12 @@ void setup()
   u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
   Wire.begin();
 
-  ei_grayscale_init();
+  ei_image_init();
 
   pinMode(buttonPin, INPUT_PULLUP);
 
   Serial.begin(9600);
-
+  CameraSerial.setRxBufferSize(2048);
   // Begin serial with A010's default baudrate.
   CameraSerial.begin(115200, SERIAL_8N1, RX, TX);
   while (!CameraSerial)
@@ -317,10 +318,11 @@ void loop()
   parseFrame();
   if (isNewFrameReady)
   {
+    pixel_sum = 0;
     mpu.update();
 
     run_depth_ei();
-    run_grayscale_ei();
+    run_image_ei();
 
     // float yaw = mpu.getYaw();
     // float pitch = mpu.getPitch();
@@ -333,14 +335,16 @@ void loop()
     u8x8.println("DEPTH:");
     u8x8.printf("%1.3f:%.9s\n", depth_max, depth_label);
     u8x8.println("IMAGE:");
-    u8x8.printf("%1.3f:%.9s\n", grayscale_max, grayscale_label);
-    
-    char* fianl_answer = depth_max > grayscale_max ? depth_label : grayscale_label;
-    u8x8.printf("FINAL: \n%.14s", fianl_answer);
+    u8x8.printf("%1.3f:%.9s\n", image_max, image_label);
+    float64_t weighted_image_max = (float64_t)image_max * ((float64_t) pixel_sum / ( float64_t ) MAX_SUM);
+    float64_t weighted_depth_max = depth_max * 0.5; 
+    char* fianl_answer = weighted_depth_max > weighted_image_max ? depth_label : image_label;
+    Serial.printf("Weighted Depth:%1.7f, Weighted Image: %1.7f\n", weighted_depth_max, weighted_image_max);
+    u8x8.printf("FINAL: \n%.14s",  fianl_answer);
   }
 }
 
-void run_grayscale_ei()
+void run_image_ei()
 {
   // instead of wait_ms, we'll wait on the signal, this allows threads to cancel us...
   // jif (ei_sleep(5) != EI_IMPULSE_OK)
@@ -359,9 +363,9 @@ void run_grayscale_ei()
 
   ei::signal_t signal;
   signal.total_length = EI_CLASSIFIER_INPUT_WIDTH * EI_CLASSIFIER_INPUT_HEIGHT;
-  signal.get_data = &ei_grayscale_get_data;
+  signal.get_data = &ei_image_get_data;
 
-  if (ei_grayscale_capture((size_t)EI_CLASSIFIER_INPUT_WIDTH, (size_t)EI_CLASSIFIER_INPUT_HEIGHT, snapshot_buf) == false)
+  if (ei_image_capture((size_t)EI_CLASSIFIER_INPUT_WIDTH, (size_t)EI_CLASSIFIER_INPUT_HEIGHT, snapshot_buf) == false)
   {
     ei_printf("Failed to capture image\r\n");
     free(snapshot_buf);
@@ -382,18 +386,18 @@ void run_grayscale_ei()
   // ei_printf("Predictions (DSP: %d ms., Classification: %d ms., Anomaly: %d ms.): \n",
   //          result.timing.dsp, result.timing.classification, result.timing.anomaly);
 
-  grayscale_max = 0;
+  image_max = 0;
   for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++)
   {
-    if (result.classification[ix].value > grayscale_max && get_last_char(result.classification[ix].label) == 'e')
+    if (result.classification[ix].value > image_max && get_last_char(result.classification[ix].label) == 'e')
     {
-      grayscale_max = result.classification[ix].value;
-      grayscale_label = (char *)result.classification[ix].label;
+      image_max = result.classification[ix].value;
+      image_label = (char *)result.classification[ix].label;
     }
     // ei_printf("I:    %s: %.5f\n", result.classification[ix].label,
     //           result.classification[ix].value);
   }
-  Serial.printf("IMAGE: %03.3f, %s\n", grayscale_max, grayscale_label);
+  Serial.printf("IMAGE: %03.3f, %s\n", image_max, image_label);
   free(snapshot_buf);
 }
 
@@ -431,7 +435,7 @@ void run_depth_ei()
       }
     }
 
-    Serial.printf("DEPTH: %03.3f, %s\n", grayscale_max, grayscale_label);
+    Serial.printf("DEPTH: %03.3f, %s\n", image_max, image_label);
 
     isNewFrameReady = false;
   }
